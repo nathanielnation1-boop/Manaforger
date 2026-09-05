@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ManaForge — MTG Deck Builder</title>
+<style>
+:root{--bg:#0b0d12;--panel:#121620;--panel2:#181d28;--line:#293142;--text:#f4f6fb;--muted:#929bad;--accent:#7c5cff;--green:#41d392;--red:#ff6577;--gold:#f2c96d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 70% -10%,#242044 0,#0b0d12 42%);color:var(--text);font:14px Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-rows:64px 1fr}
+header{display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--line);background:#0d1017eF;backdrop-filter:blur(12px);position:sticky;top:0;z-index:5}
+.logo{font-weight:900;font-size:20px;letter-spacing:-.5px}.logo span{color:var(--accent)}
+.actions{display:flex;gap:8px}.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:9px 13px;border-radius:9px}.btn:hover{border-color:#46516a}.primary{background:var(--accent);border-color:var(--accent);font-weight:700}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 370px;min-height:0}
+main{padding:22px;overflow:auto}.topline{display:flex;gap:12px;align-items:center;margin-bottom:18px}.search{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:12px 14px;border-radius:10px;outline:none}.search:focus{border-color:var(--accent)}
+select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:11px;border-radius:9px}.tabs{display:flex;gap:5px;margin-bottom:16px}.tab{border:0;background:transparent;color:var(--muted);padding:9px 12px;border-radius:8px}.tab.active{background:var(--panel2);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;transition:.15s transform,.15s border-color}.card:hover{transform:translateY(-2px);border-color:#4a5570}.art{width:100%;aspect-ratio:5/7;object-fit:cover;background:#202532}.cardbody{padding:10px}.name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta{color:var(--muted);font-size:12px;margin-top:3px}.price{color:var(--green);font-weight:800;margin-top:7px}.add{width:100%;margin-top:8px;padding:8px;border:0;border-radius:7px;background:#252c3a;color:#fff}.add:hover{background:#343e52}
+aside{border-left:1px solid var(--line);background:#0f131b;display:flex;flex-direction:column;min-height:0}.deckhead{padding:20px;border-bottom:1px solid var(--line)}.deckname{font-size:21px;font-weight:850}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:14px}.stat{background:var(--panel);border:1px solid var(--line);padding:9px;border-radius:8px}.stat b{display:block;font-size:17px}.stat small{color:var(--muted)}
+.decklist{padding:12px 20px;overflow:auto;flex:1}.section{margin:14px 0 7px;color:var(--gold);font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.8px}.row{display:grid;grid-template-columns:32px 1fr auto;gap:8px;align-items:center;padding:7px 5px;border-radius:7px}.row:hover{background:var(--panel)}.qty{color:var(--muted);font-weight:700}.remove{border:0;background:transparent;color:var(--muted);font-size:16px}.remove:hover{color:var(--red)}
+.total{padding:16px 20px;border-top:1px solid var(--line);background:#111620}.totalline{display:flex;justify-content:space-between;align-items:center}.totalprice{font-size:24px;font-weight:900;color:var(--green)}.hint{color:var(--muted);font-size:11px;margin-top:5px}
+.empty{padding:45px 15px;text-align:center;color:var(--muted)}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.layout aside{border-left:0;border-top:1px solid var(--line);height:52vh}.grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo">Mana<span>Forge</span> <small style="color:#697386;font-weight:600">MTG DECK BUILDER</small></div>
+  <div class="actions">
+    <button class="btn" id="clear">Clear Deck</button>
+    <button class="btn" id="export">Export</button>
+  </div>
+</header>
+<div class="layout">
+<main>
+  <div class="topline">
+    <input id="search" class="search" placeholder="Search cards — try Lightning Bolt, Sol Ring, Atraxa...">
+    <select id="format"><option>Commander</option><option>Modern</option><option>Standard</option><option>Legacy</option><option>Vintage</option><option>Casual</option></select>
+    <select id="sort"><option value="name">Name</option><option value="price">Price</option></select>
+  </div>
+  <div class="tabs"><button class="tab active" data-q="">Featured</button><button class="tab" data-q="type:creature">Creatures</button><button class="tab" data-q="type:instant">Instants</button><button class="tab" data-q="type:sorcery">Sorceries</button><button class="tab" data-q="type:artifact">Artifacts</button><button class="tab" data-q="type:enchantment">Enchantments</button></div>
+  <div id="status" style="color:var(--muted);margin:8px 0 14px">Loading cards…</div>
+  <div id="cards" class="grid"></div>
+</main>
+<aside>
+  <div class="deckhead">
+    <div class="deckname" id="deckname">My Commander Deck</div>
+    <div style="color:var(--muted);margin-top:3px" id="formatlabel">Commander</div>
+    <div class="stats">
+      <div class="stat"><b id="count">0</b><small>Cards</small></div>
+      <div class="stat"><b id="unique">0</b><small>Unique</small></div>
+      <div class="stat"><b id="avg">$0.00</b><small>Avg/card</small></div>
+    </div>
+  </div>
+  <div id="deck" class="decklist"><div class="empty">Your deck is empty.<br>Search for cards and press <b>Add</b>.</div></div>
+  <div class="total">
+    <div class="totalline"><span>Total estimated value</span><span class="totalprice" id="total">$0.00</span></div>
+    <div class="hint">Prices use Scryfall's current USD card-price data when available.</div>
+  </div>
+</aside>
+</div>
+</div>
+<script>
+const state={deck:new Map(),results:[],query:""};
+const $=id=>document.getElementById(id);
+const money=n=>n?`$${n.toFixed(2)}`:"$0.00";
+function cardPrice(c){const p=parseFloat(c.prices?.usd);return Number.isFinite(p)?p:0}
+async function searchCards(q="") {
+  $("status").textContent="Loading cards…"; $("cards").innerHTML="";
+  try{
+    let url=q?`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=cards&order=name`:
+      "https://api.scryfall.com/cards/search?q=game%3Apaper+is%3Acommander&unique=cards&order=name";
+    const r=await fetch(url); if(!r.ok)throw new Error("No results");
+    const d=await r.json(); state.results=d.data.slice(0,60);
+    renderResults();
+    $("status").textContent=`Showing ${state.results.length} cards`;
+  }catch(e){$("status").textContent="Couldn't load cards. Check your internet connection or try another search."; }
+}
+function renderResults(){
+  let a=[...state.results]; if($("sort").value==="price")a.sort((x,y)=>cardPrice(y)-cardPrice(x));
+  $("cards").innerHTML=a.map(c=>{
+    const img=c.image_uris?.normal||c.card_faces?.[0]?.image_uris?.normal||"";
+    return `<article class="card"><img class="art" loading="lazy" src="${img}" alt="${esc(c.name)}"><div class="cardbody"><div class="name" title="${esc(c.name)}">${esc(c.name)}</div><div class="meta">${esc(c.set_name||"")}</div><div class="price">${money(cardPrice(c))}</div><button class="add" onclick='add(${JSON.stringify(c.id)})'>＋ Add to deck</button></div></article>`
+  }).join("");
+}
+function add(id){
+ const c=state.results.find(x=>x.id===id); if(!c)return;
+ const old=state.deck.get(id); state.deck.set(id,{card:c,qty:(old?.qty||0)+1}); renderDeck();
+}
+function remove(id){
+ const x=state.deck.get(id); if(!x)return;
+ if(x.qty>1)x.qty--; else state.deck.delete(id); renderDeck();
+}
+function renderDeck(){
+ let items=[...state.deck.values()].sort((a,b)=>a.card.name.localeCompare(b.card.name));
+ let total=items.reduce((s,x)=>s+x.qty*cardPrice(x.card),0), count=items.reduce((s,x)=>s+x.qty,0);
+ $("count").textContent=count;$("unique").textContent=items.length;$("total").textContent=money(total);
+ $("avg").textContent=count?money(total/count):"$0.00";
+ if(!items.length){$("deck").innerHTML='<div class="empty">Your deck is empty.<br>Search for cards and press <b>Add</b>.</div>';return}
+ const groups={Commander:[],Creatures:[],Instants:[],Sorceries:[],Artifacts:[],Enchantments:[],Other:[]};
+ items.forEach(x=>{
+   const t=x.card.type_line||"";
+   let g=t.includes("Creature")?"Creatures":t.includes("Instant")?"Instants":t.includes("Sorcery")?"Sorceries":t.includes("Artifact")?"Artifacts":t.includes("Enchantment")?"Enchantments":t.includes("Commander")?"Commander":"Other";
+   groups[g].push(x)
+ });
+ $("deck").innerHTML=Object.entries(groups).filter(([,v])=>v.length).map(([g,v])=>`<div class="section">${g}</div>`+v.map(x=>`<div class="row"><span class="qty">${x.qty}×</span><span title="${esc(x.card.name)}">${esc(x.card.name)}</span><button class="remove" onclick="remove('${x.card.id}')" title="Remove one">×</button></div>`).join("")).join("");
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+$("search").addEventListener("keydown",e=>{if(e.key==="Enter"){state.query=e.target.value.trim();searchCards(state.query)}})
+$("sort").onchange=renderResults;
+$("format").onchange=e=>{$("formatlabel").textContent=e.target.value};
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");state.query=b.dataset.q;searchCards(state.query)});
+$("clear").onclick=()=>{if(confirm("Clear the entire deck?")){state.deck.clear();renderDeck()}};
+$("export").onclick=()=>{
+ const lines=[...state.deck.values()].map(x=>`${x.qty} ${x.card.name}`).join("\n");
+ const blob=new Blob([lines],{type:"text/plain"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="manaforge-deck.txt";a.click();URL.revokeObjectURL(a.href);
+};
+searchCards(); renderDeck();
+</script>
+</body>
+</html>
